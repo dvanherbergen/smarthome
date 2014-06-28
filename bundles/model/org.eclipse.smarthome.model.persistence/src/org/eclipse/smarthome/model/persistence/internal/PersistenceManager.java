@@ -23,7 +23,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.smarthome.core.events.AbstractEventSubscriber;
 import org.eclipse.smarthome.core.items.GenericItem;
 import org.eclipse.smarthome.core.items.GroupItem;
 import org.eclipse.smarthome.core.items.Item;
@@ -40,7 +39,6 @@ import org.eclipse.smarthome.core.types.UnDefType;
 import org.eclipse.smarthome.model.core.EventType;
 import org.eclipse.smarthome.model.core.ModelRepository;
 import org.eclipse.smarthome.model.core.ModelRepositoryChangeListener;
-import org.eclipse.smarthome.model.persistence.scoping.GlobalStrategies;
 import org.eclipse.smarthome.model.persistence.persistence.AllConfig;
 import org.eclipse.smarthome.model.persistence.persistence.CronStrategy;
 import org.eclipse.smarthome.model.persistence.persistence.GroupConfig;
@@ -48,6 +46,7 @@ import org.eclipse.smarthome.model.persistence.persistence.ItemConfig;
 import org.eclipse.smarthome.model.persistence.persistence.PersistenceConfiguration;
 import org.eclipse.smarthome.model.persistence.persistence.PersistenceModel;
 import org.eclipse.smarthome.model.persistence.persistence.Strategy;
+import org.eclipse.smarthome.model.persistence.scoping.GlobalStrategies;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -67,7 +66,7 @@ import org.slf4j.LoggerFactory;
  * @author Kai Kreuzer - Initial contribution and API
  *
  */
-public class PersistenceManager extends AbstractEventSubscriber implements ModelRepositoryChangeListener, ItemRegistryChangeListener, StateChangeListener {
+public class PersistenceManager implements ModelRepositoryChangeListener, ItemRegistryChangeListener, StateChangeListener {
 	
 	private static final Logger logger = LoggerFactory.getLogger(PersistenceManager.class);
 

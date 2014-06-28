@@ -7,22 +7,25 @@
  */
 package org.eclipse.smarthome.io.monitor.internal;
 
-import org.eclipse.smarthome.core.events.AbstractEventSubscriber;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
+import org.eclipse.smarthome.core.events.CommandEvent;
+import org.eclipse.smarthome.core.events.CommandEventSubscriber;
+import org.eclipse.smarthome.core.events.StateEvent;
+import org.eclipse.smarthome.core.events.StateEventSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class EventLogger extends AbstractEventSubscriber {
+public class EventLogger implements StateEventSubscriber, CommandEventSubscriber {
 
 	static private Logger logger = LoggerFactory.getLogger("runtime.busevents");
 
-	public void receiveCommand(String itemName, Command command) {
-		logger.info("{} received command {}", itemName, command);
+	@Override
+	public void receiveCommand(CommandEvent event) {
+		logger.info("{} received command {}", event.getItemName(), event.getCommand());
 	}
 
-	public void receiveUpdate(String itemName, State newStatus) {
-		logger.info("{} state updated to {}", itemName, newStatus);
+	@Override
+	public void receiveUpdate(StateEvent event) {
+		logger.info("{} state updated to {}", event.getItemName(), event.getState());
 	}
 
 }

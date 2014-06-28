@@ -7,8 +7,6 @@
  */
 package org.eclipse.smarthome.model.rule.runtime.internal.engine;
 
-import static org.eclipse.smarthome.core.events.EventConstants.TOPIC_PREFIX;
-import static org.eclipse.smarthome.core.events.EventConstants.TOPIC_SEPERATOR;
 import static org.eclipse.smarthome.model.rule.runtime.internal.engine.RuleTriggerManager.TriggerTypes.CHANGE;
 import static org.eclipse.smarthome.model.rule.runtime.internal.engine.RuleTriggerManager.TriggerTypes.COMMAND;
 import static org.eclipse.smarthome.model.rule.runtime.internal.engine.RuleTriggerManager.TriggerTypes.SHUTDOWN;
@@ -20,6 +18,8 @@ import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.smarthome.core.events.CommandEvent;
+import org.eclipse.smarthome.core.events.CommandEventSubscriber;
 import org.eclipse.smarthome.core.items.GenericItem;
 import org.eclipse.smarthome.core.items.Item;
 import org.eclipse.smarthome.core.items.ItemNotFoundException;
@@ -31,7 +31,6 @@ import org.eclipse.smarthome.core.scriptengine.ScriptEngine;
 import org.eclipse.smarthome.core.scriptengine.ScriptExecutionException;
 import org.eclipse.smarthome.core.scriptengine.ScriptExecutionThread;
 import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.EventType;
 import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.model.core.ModelRepository;
 import org.eclipse.smarthome.model.core.ModelRepositoryChangeListener;
@@ -40,8 +39,6 @@ import org.eclipse.smarthome.model.rule.rules.Rule;
 import org.eclipse.smarthome.model.rule.rules.RuleModel;
 import org.eclipse.smarthome.model.rule.runtime.internal.RuleRuntimeInjectorProvider;
 import org.eclipse.xtext.naming.QualifiedName;
-import org.osgi.service.event.Event;
-import org.osgi.service.event.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +56,7 @@ import com.google.inject.Injector;
  *
  */
 @SuppressWarnings("restriction")
-public class RuleEngine implements EventHandler, ItemRegistryChangeListener, StateChangeListener, ModelRepositoryChangeListener {
+public class RuleEngine implements CommandEventSubscriber, ItemRegistryChangeListener, StateChangeListener, ModelRepositoryChangeListener {
 
 		static private final Logger logger = LoggerFactory.getLogger(RuleEngine.class);
 		
@@ -186,13 +183,14 @@ public class RuleEngine implements EventHandler, ItemRegistryChangeListener, Sta
 			}
 		}
 
-		public void receiveCommand(String itemName, Command command) {
+		@Override
+		public void receiveCommand(CommandEvent event) {
 			if(triggerManager!=null && itemRegistry!=null) {
 				try {
-					Item item = itemRegistry.getItem(itemName);
-					Iterable<Rule> rules = triggerManager.getRules(COMMAND, item, command);
+					Item item = itemRegistry.getItem(event.getItemName());
+					Iterable<Rule> rules = triggerManager.getRules(COMMAND, item, event.getCommand());
 
-					executeRules(rules, command);
+					executeRules(rules, event.getCommand());
 				} catch (ItemNotFoundException e) {
 					// ignore commands for non-existent items
 				}
@@ -203,26 +201,6 @@ public class RuleEngine implements EventHandler, ItemRegistryChangeListener, Sta
 			if (item instanceof GenericItem) {
 				GenericItem genericItem = (GenericItem) item;
 				genericItem.addStateChangeListener(this);
-			}
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		public void handleEvent(Event event) {  
-			String itemName = (String) event.getProperty("item");
-			
-			String topic = event.getTopic();
-			String[] topicParts = topic.split(TOPIC_SEPERATOR);
-			
-			if(!(topicParts.length > 2) || !topicParts[0].equals(TOPIC_PREFIX)) {
-				return; // we have received an event with an invalid topic
-			}
-			String operation = topicParts[1];
-			
-			if(operation.equals(EventType.COMMAND.toString())) {
-				Command command = (Command) event.getProperty("command");
-				if(command!=null) receiveCommand(itemName, command);
 			}
 		}
 
@@ -263,7 +241,7 @@ public class RuleEngine implements EventHandler, ItemRegistryChangeListener, Sta
 						script.execute(context);
 						executedRules.add(rule);
 					} catch (ScriptExecutionException e) {
-						logger.error("Error during the execution of startup rule '{}': {}", new String[] { rule.getName(), e.getCause().getMessage() });
+						logger.error("Error during the execution of startup rule '{}': {}", rule.getName(), e.getCause().getMessage());
 						logger.debug("Error during the execution of startup rule", e);
 						executedRules.add(rule);
 					}

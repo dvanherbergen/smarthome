@@ -14,8 +14,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import org.eclipse.smarthome.core.events.AbstractEventSubscriber;
+import org.eclipse.smarthome.core.events.CommandEvent;
+import org.eclipse.smarthome.core.events.CommandEventSubscriber;
 import org.eclipse.smarthome.core.events.EventPublisher;
+import org.eclipse.smarthome.core.events.StateEvent;
+import org.eclipse.smarthome.core.events.StateEventSubscriber;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.ChannelUID;
@@ -26,7 +29,6 @@ import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLinkRegistry;
-import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.State;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
@@ -43,13 +45,13 @@ import org.slf4j.LoggerFactory;
  * {@link ThingHandlerFactory}s and calls
  * {@link ThingHandlerFactory#registerHandler(Thing)} for each thing, that was
  * added to the {@link ThingRegistry}. In addition the {@link ThingManager} acts
- * as an {@link EventHandler} and subcribes to smarthome update and command
+ * as an {@link CommandEventSubscriber} and {@link StateEventSubscriber} and subcribes to smarthome update and command
  * events.
  * 
  * @author Dennis Nobel - Initial contribution
  * 
  */
-public class ThingManager extends AbstractEventSubscriber implements ThingTracker {
+public class ThingManager implements ThingTracker, CommandEventSubscriber, StateEventSubscriber {
 
     private final class ThingHandlerTracker extends ServiceTracker<ThingHandler, ThingHandler> {
 
@@ -113,7 +115,7 @@ public class ThingManager extends AbstractEventSubscriber implements ThingTracke
         public void channelUpdated(ChannelUID channelUID, State state) {
             String item = itemChannelLinkRegistry.getBoundItem(channelUID);
             if (item != null) {
-                eventPublisher.postUpdate(item, state);
+                eventPublisher.postEvent(new StateEvent(item, state));
             }
         }
     };
@@ -153,16 +155,16 @@ public class ThingManager extends AbstractEventSubscriber implements ThingTracke
     }
 
     @Override
-    public void receiveCommand(String itemName, Command command) {
+    public void receiveCommand(CommandEvent event) {
         for (Thing thing : this.things) {
             List<Channel> channels = thing.getChannels();
             for (Channel channel : channels) {
-                if (isLinked(itemName, channel)) {
+                if (isLinked(event.getItemName(), channel)) {
                     logger.info(
                             "Delegating command '{}' for item '{}' to handler for channel '{}'",
-                            command, itemName, channel.getUID());
+                            event.getCommand(), event.getItemName(), channel.getUID());
                     try {
-                        thing.getHandler().handleCommand(channel.getUID(), command);
+                        thing.getHandler().handleCommand(channel.getUID(), event.getCommand());
                     } catch (Exception ex) {
                         logger.error("Exception occured while calling handler: " + ex.getMessage(),
                                 ex);
@@ -173,18 +175,18 @@ public class ThingManager extends AbstractEventSubscriber implements ThingTracke
     }
 
     @Override
-    public void receiveUpdate(String itemName, State newState) {
+    public void receiveUpdate(StateEvent event) {
         for (Thing thing : this.things) {
             List<Channel> channels = thing.getChannels();
             for (Channel channel : channels) {
-                if (isLinked(itemName, channel)) {
+                if (isLinked(event.getItemName(), channel)) {
                     ThingHandler handler = thing.getHandler();
                     if (handler != null) {
                         logger.info(
                                 "Delegating update '{}' for item '{}' to handler for channel '{}'",
-                                newState, itemName, channel.getUID());
+                                event.getState(), event.getItemName(), channel.getUID());
                         try {
-                            handler.handleUpdate(channel.getUID(), newState);
+                            handler.handleUpdate(channel.getUID(), event.getState());
                         } catch (Exception ex) {
                             logger.error(
                                     "Exception occured while calling handler: " + ex.getMessage(),
