@@ -73,6 +73,8 @@ public class MqttBrokerConnection implements MqttCallback {
 	private MqttClient client;
 
 	private boolean started;
+	
+	private int keepAliveInterval = 60;
 
 	private List<MqttMessageConsumer> consumers = new CopyOnWriteArrayList<MqttMessageConsumer>();
 
@@ -345,6 +347,8 @@ public class MqttBrokerConnection implements MqttCallback {
 					lastWill.getQos(), lastWill.isRetain());
 		}
 
+		options.setKeepAliveInterval(keepAliveInterval);
+		
 		client.connect(options);
 	}
 
@@ -601,4 +605,14 @@ public class MqttBrokerConnection implements MqttCallback {
 
 	}
 
+	/**
+	 * Set the keep alive interval. The default interval is 60 seconds.
+	 * If no heartbeat is received within this timeframe, the connection 
+	 * will be considered dead. Set this to a higher value on systems which may
+	 * not always be able to process the heartbeat in time. 
+	 * @param keepAliveInterval interval in seconds
+	 */
+	public void setKeepAliveInterval(int keepAliveInterval) {
+		this.keepAliveInterval = keepAliveInterval;
+	}
 }
